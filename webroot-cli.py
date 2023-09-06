@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta
 
 api_url = 'https://unityapi.webrootcloudav.com/'
 
-def request( method='GET', resource='', params='', headers={"accept": "application/json",} ):
+def request( method='GET', resource='', params='', headers={'accept': 'application/json',} ):
   url=api_url+resource
   if (args.debug):
     print(url)
@@ -38,8 +38,8 @@ def request( method='GET', resource='', params='', headers={"accept": "applicati
         if urlp=='':
           urlp=urlp+param
         else:
-          urlp=urlp+"&"+param
-      url=url+"?"+urlp
+          urlp=urlp+'&'+param
+      url=url+'?'+urlp
     response = requests.get(
       url,
       headers=headers,
@@ -100,17 +100,17 @@ if os.path.isfile(config_file):
 else:
   sys.exit('Configuration file not found!')
 
-health_version=request( resource='service/api/health/version', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
-health_ping=request( resource='service/api/health/ping', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
+health_version=request( resource='service/api/health/version', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
+health_ping=request( resource='service/api/health/ping', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
 
 # scope: [\"SkyStatus.Site\",\"SkyStatus.GSM\",\"SkyStatus.Usage\",\"SkyStatus.Reporting\",\"Console.GSM\",\"Notifications.Subscriptions\"]"
-auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' }, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
+auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' }, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
 
-subscription=request( resource='service/api/notifications/subscriptions', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+subscription=request( resource='service/api/notifications/subscriptions', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
 
 table = []
 print('Date: '+str(date.today()))
-status_site=request( resource='service/api/status/site/'+gsm, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+status_site=request( resource='service/api/status/site/'+gsm, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
 if not (args.noverbose) or (args.debug):
   print('Count: '+str(status_site['Count']))
   print('ContinuationToken: '+str(status_site['ContinuationToken']))
@@ -118,7 +118,7 @@ if not (args.noverbose) or (args.debug):
 table_endpoints(status_site)
 ContinuationToken=status_site['ContinuationToken']
 while ContinuationToken:
-  status_site_extend=request( resource='service/api/status/site/'+gsm, params={'Continuation='+ContinuationToken}, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+  status_site_extend=request( resource='service/api/status/site/'+gsm, params={'Continuation='+ContinuationToken}, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
   if not (args.noverbose) or (args.debug):
     print('Count: '+str(status_site_extend['Count']))
     print('ContinuationToken: '+str(status_site_extend['ContinuationToken']))
