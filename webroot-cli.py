@@ -24,7 +24,7 @@ def request( method='GET', resource='', params='', headers={"accept": "applicati
   if (args.debug):
     print(url)
     # print statements from `http.client.HTTPConnection` to console/stdout
-    HTTPConnection.debuglevel = 1
+    # HTTPConnection.debuglevel = 1
   if method=='POST':
     response = requests.post(
       api_url+resource,
@@ -81,9 +81,9 @@ def table_endpoints( status_site_f ):
 #############################################################################
 parser = argparse.ArgumentParser(description='https://github.com/osgpcq/webroot-cli-py',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--client',               default='exo',       help='Config file selection')
-parser.add_argument('--active',               action='store_true', help='Choose active endpoints')
-parser.add_argument('--last',                 action='store_true', help='Check not seen')
+parser.add_argument('--client',               default='exo',       help='Choose the GSM key')
+parser.add_argument('--active',               action='store_true', help='Choose active endpoints only')
+parser.add_argument('--last',                 action='store_true', help='List endpoints not seen for 7 days')
 parser.add_argument('--debug',                action='store_true', help='Debug information')
 parser.add_argument('--noverbose',            action='store_true', default=False, help='Verbose')
 args = parser.parse_args()
@@ -103,9 +103,7 @@ else:
 health_version=request( resource='service/api/health/version', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
 health_ping=request( resource='service/api/health/ping', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
 
-# [\"SkyStatus.Site\",\"SkyStatus.GSM\",\"SkyStatus.Usage\",\"SkyStatus.Reporting\",\"Console.GSM\"]"
-#auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' }, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
-#auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': 'skystatus.reporting' }, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
+# scope: [\"SkyStatus.Site\",\"SkyStatus.GSM\",\"SkyStatus.Usage\",\"SkyStatus.Reporting\",\"Console.GSM\",\"Notifications.Subscriptions\"]"
 auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' }, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded' } )
 
 subscription=request( resource='service/api/notifications/subscriptions', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
