@@ -48,6 +48,36 @@ def request( method='GET', resource='', params='', headers={"accept": "applicati
     print(json.dumps(json.loads(response.text), sort_keys=True, indent=2, separators=(',', ': ')))
   return(response.json())
 #############################################################################
+def table_endpoints( status_site_f ):
+  for endpoint in status_site_f['QueryResults']:
+    if ( not (args.active) ) or ((args.active) and not endpoint['Deactivated']):
+      if ( not (args.last) ) or ((args.last) and ( datetime.strptime(endpoint['LastSeen'],'%Y-%m-%dT%H:%M:%S') < datetime.today()-timedelta(7) )):
+        table.append([
+          str(endpoint['Deactivated']),
+          str(endpoint['BasicInfo']['DeviceType']),
+          str(endpoint['OS']),
+          str(endpoint['HostName']),
+          str(endpoint['OSAndVersions']['CurrentUser']),
+          str(endpoint['IPAddress']),
+          str(endpoint['OSAndVersions']['IPV4']),
+          str(endpoint['OSAndVersions']['MACAddress']),
+          str(endpoint['OSAndVersions']['PrimaryBrowser']),
+          str(endpoint['OSAndVersions']['Workgroup']),
+          str(endpoint['OSAndVersions']['IsFirewallEnabled']),
+          str(endpoint['ClientVersion']),
+          str(endpoint['BasicInfo']['AttentionRequired']),
+          str(endpoint['BasicInfo']['Infected']),
+          str(endpoint['BasicInfo']['ActiveThreats']),
+          str(endpoint['BasicInfo']['Managed']),
+          str(endpoint['ExtendedInfo']['HasBeenInfected']),
+          str(endpoint['TimesAndStats']['ThreatsRemoved']),
+          str(endpoint['Scheduling']['ScheduledScansEnabled']),
+          str(endpoint['LastSeen']),
+          str(endpoint['TimesAndStats']['LastScan']),
+          str(endpoint['TimesAndStats']['LastDeepScan']),
+        ]),
+  return(table)
+#############################################################################
 #############################################################################
 parser = argparse.ArgumentParser(description='https://github.com/osgpcq/webroot-cli-py',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -80,40 +110,24 @@ auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id
 
 subscription=request( resource='service/api/notifications/subscriptions', headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
 
-status_site=request( resource='service/api/status/site/'+gsm, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
 table = []
-print('Count: '+str(status_site['Count']))
 print('Date: '+str(date.today()))
-for endpoint in status_site['QueryResults']:
-  if ( not (args.active) ) or ((args.active) and not endpoint['Deactivated']):
-    if ( not (args.last) ) or ((args.last) and ( datetime.strptime(endpoint['LastSeen'],'%Y-%m-%dT%H:%M:%S') < datetime.today()-timedelta(7) )):
-      table.append([
-        endpoint['Deactivated'],
-        endpoint['BasicInfo']['DeviceType'],
-        endpoint['OS'],
-        endpoint['HostName'],
-        endpoint['OSAndVersions']['CurrentUser'],
-        endpoint['IPAddress'],
-        endpoint['OSAndVersions']['IPV4'],
-        endpoint['OSAndVersions']['MACAddress'],
-        endpoint['OSAndVersions']['PrimaryBrowser'],
-        endpoint['OSAndVersions']['Workgroup'],
-        endpoint['OSAndVersions']['IsFirewallEnabled'],
-        endpoint['ClientVersion'],
-        endpoint['BasicInfo']['AttentionRequired'],
-        endpoint['BasicInfo']['Infected'],
-        endpoint['BasicInfo']['ActiveThreats'],
-        endpoint['BasicInfo']['Managed'],
-        endpoint['ExtendedInfo']['HasBeenInfected'],
-        endpoint['TimesAndStats']['ThreatsRemoved'],
-        endpoint['Scheduling']['ScheduledScansEnabled'],
-        endpoint['LastSeen'],
-        endpoint['TimesAndStats']['LastScan'],
-        endpoint['TimesAndStats']['LastDeepScan'],
-      ]),
+status_site=request( resource='service/api/status/site/'+gsm, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+if not (args.noverbose) or (args.debug):
+  print('Count: '+str(status_site['Count']))
+  print('ContinuationToken: '+str(status_site['ContinuationToken']))
+  print('ContinuationURI: '+str(status_site['ContinuationURI']))
+table_endpoints(status_site)
+ContinuationToken=status_site['ContinuationToken']
+while ContinuationToken:
+  status_site_extend=request( resource='service/api/status/site/'+gsm, params={'Continuation='+ContinuationToken}, headers={"accept": "application/json", 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+  if not (args.noverbose) or (args.debug):
+    print('Count: '+str(status_site_extend['Count']))
+    print('ContinuationToken: '+str(status_site_extend['ContinuationToken']))
+    print('ContinuationURI: '+str(status_site_extend['ContinuationURI']))
+  ContinuationToken=status_site_extend['ContinuationToken']
+  table_endpoints(status_site_extend)
 print(tabulate(sorted(table), headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan']))
-
-
 #############################################################################
 #############################################################################
 #############################################################################
