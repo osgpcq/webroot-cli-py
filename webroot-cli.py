@@ -18,33 +18,28 @@ from http.client import HTTPConnection
 from datetime import date, datetime, timedelta
 
 api_url = 'https://unityapi.webrootcloudav.com/'
-
-def request( method='GET', resource='', params='', headers={'accept': 'application/json',} ):
+#############################################################################
+def request( method='GET', resource='' , auth='', headers={}, params='', data='' ):
+  # data:   POST, PUT, ...
+  # params: GET, ...
   url=api_url+resource
-  if (args.debug):
+  headers.update({'accept': 'application/json'})
+  if (args.verbose) or (args.debug):
     print(url)
-    # print statements from `http.client.HTTPConnection` to console/stdout
-    # HTTPConnection.debuglevel = 1
-  if method=='POST':
-    response = requests.post(
-      api_url+resource,
-      headers=headers,
-      data=params
-    )
-  elif method=='GET':
-    if params:
-      urlp=''
-      for param in params:
-        if urlp=='':
-          urlp=urlp+param
-        else:
-          urlp=urlp+'&'+param
-      url=url+'?'+urlp
-    response = requests.get(
-      url,
-      headers=headers,
-    )
-  if not (args.noverbose) or (args.debug):
+    if (args.debug):
+      # print statements from `http.client.HTTPConnection` to console/stdout
+      HTTPConnection.debuglevel=1
+  response=requests.request(
+    method,
+    api_url+resource,
+    auth=auth,
+    headers=headers,
+    params=params,
+    data=data
+  )
+  if (args.verbose) or (args.debug):
+    print('Status code: '+str(response.status_code))
+  if (args.debug):
     print(json.dumps(json.loads(response.text), sort_keys=True, indent=2, separators=(',', ': ')))
   return(response.json())
 #############################################################################
@@ -82,10 +77,15 @@ def table_endpoints( status_site_f ):
 parser = argparse.ArgumentParser(description='https://github.com/osgpcq/webroot-cli-py',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--client',               default='exo',       help='Choose the GSM key')
-parser.add_argument('--active',               action='store_true', help='Choose active endpoints only')
-parser.add_argument('--last',                 action='store_true', help='List endpoints not seen for 7 days')
+parser.add_argument('--endpoints',            action='store_true', help='List endpoints')
+parser.add_argument('--active',               action='store_true', help='Only active endpoints')
+parser.add_argument('--last',                 action='store_true', help='Only endpoints not seen for 7 days')
+parser.add_argument('--ping',                 action='store_true', help='Ping')
+parser.add_argument('--version',              action='store_true', help='Version')
+parser.add_argument('--subscriptions',        action='store_true', help='List subscriptions')
+parser.add_argument('--noheaders',            action='store_true', help='No headers in the output')
 parser.add_argument('--debug',                action='store_true', help='Debug information')
-parser.add_argument('--noverbose',            action='store_true', default=False, help='Verbose')
+parser.add_argument('--verbose',              action='store_true', default=False, help='Verbose')
 args = parser.parse_args()
 
 config_file='./config.conf'
@@ -100,32 +100,39 @@ if os.path.isfile(config_file):
 else:
   sys.exit('Configuration file not found!')
 
-health_version=request( resource='service/api/health/version', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
-health_ping=request( resource='service/api/health/ping', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
-
 # scope: [\"SkyStatus.Site\",\"SkyStatus.GSM\",\"SkyStatus.Usage\",\"SkyStatus.Reporting\",\"Console.GSM\",\"Notifications.Subscriptions\"]"
-auth=request( resource='auth/token', method='POST', params={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' }, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' } )
+authtoken=request( method='POST', resource='auth/token', headers={ 'Content-Type': 'application/x-www-form-urlencoded' }, data={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' } )
 
-subscription=request( resource='service/api/notifications/subscriptions', headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
+if args.ping:
+  health_ping=request( resource='service/api/health/ping', headers={ 'Content-Type': 'application/x-www-form-urlencoded' } )
+if args.version:
+  health_version=request( resource='service/api/health/version', headers={ 'Content-Type': 'application/x-www-form-urlencoded' } )
+if args.subscriptions:
+  subscriptions=request( resource='service/api/notifications/subscriptions', headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
 
-table = []
-print('Date: '+str(date.today()))
-status_site=request( resource='service/api/status/site/'+gsm, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
-if not (args.noverbose) or (args.debug):
-  print('Count: '+str(status_site['Count']))
-  print('ContinuationToken: '+str(status_site['ContinuationToken']))
-  print('ContinuationURI: '+str(status_site['ContinuationURI']))
-table_endpoints(status_site)
-ContinuationToken=status_site['ContinuationToken']
-while ContinuationToken:
-  status_site_extend=request( resource='service/api/status/site/'+gsm, params={'Continuation='+ContinuationToken}, headers={'accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+auth['access_token']} )
-  if not (args.noverbose) or (args.debug):
-    print('Count: '+str(status_site_extend['Count']))
-    print('ContinuationToken: '+str(status_site_extend['ContinuationToken']))
-    print('ContinuationURI: '+str(status_site_extend['ContinuationURI']))
-  ContinuationToken=status_site_extend['ContinuationToken']
-  table_endpoints(status_site_extend)
-print(tabulate(sorted(table), headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan']))
+if args.endpoints:
+  table = []
+  if args.verbose or args.debug:
+    print('Date: '+str(date.today()))
+  status_site=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
+  if args.verbose or args.debug:
+    print('Count: '+str(status_site['Count']))
+    print('ContinuationToken: '+str(status_site['ContinuationToken']))
+    print('ContinuationURI: '+str(status_site['ContinuationURI']))
+  table_endpoints(status_site)
+  ContinuationToken=status_site['ContinuationToken']
+  while ContinuationToken:
+    status_site_extend=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token']}, params={ 'Continuation': ContinuationToken } )
+    if args.verbose or args.debug:
+      print('Count: '+str(status_site_extend['Count']))
+      print('ContinuationToken: '+str(status_site_extend['ContinuationToken']))
+      print('ContinuationURI: '+str(status_site_extend['ContinuationURI']))
+    ContinuationToken=status_site_extend['ContinuationToken']
+    table_endpoints(status_site_extend)
+  if args.noheaders:
+    print(tabulate(sorted(table), tablefmt='plain'))
+  else:
+    print(tabulate(sorted(table), tablefmt='rounded_outline', headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan']))
 #############################################################################
 #############################################################################
 #############################################################################
