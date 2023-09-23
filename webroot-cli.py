@@ -103,36 +103,32 @@ else:
 # scope: [\"SkyStatus.Site\",\"SkyStatus.GSM\",\"SkyStatus.Usage\",\"SkyStatus.Reporting\",\"Console.GSM\",\"Notifications.Subscriptions\"]"
 authtoken=request( method='POST', resource='auth/token', headers={ 'Content-Type': 'application/x-www-form-urlencoded' }, data={ 'client_id': api_id, 'client_secret': api_secret, 'username': email, 'password': password, 'grant_type': 'password', 'scope': '*' } )
 
-if args.ping:
+if (args.ping):
   health_ping=request( resource='service/api/health/ping', headers={ 'Content-Type': 'application/x-www-form-urlencoded' } )
-if args.version:
+if (args.version):
   health_version=request( resource='service/api/health/version', headers={ 'Content-Type': 'application/x-www-form-urlencoded' } )
-if args.subscriptions:
+if (args.subscriptions):
   subscriptions=request( resource='service/api/notifications/subscriptions', headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
 
-if args.endpoints:
+if (args.endpoints):
+  params = ''
   table = []
-  if args.verbose or args.debug:
+  endpoints = { 'ContinuationToken': True }
+  if (args.verbose) or (args.debug):
     print('Date: '+str(date.today()))
-  status_site=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
-  if args.verbose or args.debug:
-    print('Count: '+str(status_site['Count']))
-    print('ContinuationToken: '+str(status_site['ContinuationToken']))
-    print('ContinuationURI: '+str(status_site['ContinuationURI']))
-  table_endpoints(status_site)
-  ContinuationToken=status_site['ContinuationToken']
-  while ContinuationToken:
-    status_site_extend=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token']}, params={ 'Continuation': ContinuationToken } )
-    if args.verbose or args.debug:
-      print('Count: '+str(status_site_extend['Count']))
-      print('ContinuationToken: '+str(status_site_extend['ContinuationToken']))
-      print('ContinuationURI: '+str(status_site_extend['ContinuationURI']))
-    ContinuationToken=status_site_extend['ContinuationToken']
-    table_endpoints(status_site_extend)
-  if args.noheaders:
-    print(tabulate(sorted(table), tablefmt='plain'))
+  while endpoints['ContinuationToken']:
+    endpoints=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token']}, params=params )
+    params = { 'Continuation': endpoints['ContinuationToken'] }
+    if (args.verbose) or (args.debug):
+      print('Count: '+str(endpoints['Count']))
+    if (args.debug):
+      print('ContinuationToken: '+str(endpoints['ContinuationToken']))
+      print('ContinuationURI: '+str(endpoints['ContinuationURI']))
+    table_endpoints(endpoints)
+  if (args.noheaders):
+    print(tabulate(sorted(table), tablefmt='plain', showindex=True))
   else:
-    print(tabulate(sorted(table), tablefmt='rounded_outline', headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan']))
+    print(tabulate(sorted(table), tablefmt='rounded_outline', headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan'], showindex=True ))
 #############################################################################
 #############################################################################
 #############################################################################
