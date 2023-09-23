@@ -111,11 +111,11 @@ if (args.subscriptions):
   subscriptions=request( resource='service/api/notifications/subscriptions', headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
 
 if (args.endpoints):
+  if (args.verbose) or (args.debug):
+    print('Date: '+str(date.today()))
   params = ''
   table = []
   endpoints = { 'ContinuationToken': True }
-  if (args.verbose) or (args.debug):
-    print('Date: '+str(date.today()))
   while endpoints['ContinuationToken']:
     endpoints=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token']}, params=params )
     params = { 'Continuation': endpoints['ContinuationToken'] }
