@@ -11,6 +11,7 @@ import requests
 import json
 import argparse
 import sys, os.path
+import csv  # Import the csv module
 from configparser import ConfigParser
 from requests.auth import HTTPBasicAuth
 from tabulate import tabulate
@@ -43,35 +44,39 @@ def request( method='GET', resource='' , auth='', headers={}, params='', data=''
     print(json.dumps(json.loads(response.text), sort_keys=True, indent=2, separators=(',', ': ')))
   return(response.json())
 #############################################################################
-def table_endpoints( status_site_f ):
-  for endpoint in status_site_f['QueryResults']:
-    if ( not (args.active) ) or ((args.active) and not endpoint['Deactivated']):
-      if ( not (args.last) ) or ((args.last) and ( datetime.strptime(endpoint['LastSeen'],'%Y-%m-%dT%H:%M:%S') < datetime.today()-timedelta(7) )):
-        table.append([
-          str(endpoint['Deactivated']),
-          str(endpoint['BasicInfo']['DeviceType']),
-          str(endpoint['OS']),
-          str(endpoint['HostName']),
-          str(endpoint['OSAndVersions']['CurrentUser']),
-          str(endpoint['IPAddress']),
-          str(endpoint['OSAndVersions']['IPV4']),
-          str(endpoint['OSAndVersions']['MACAddress']),
-          str(endpoint['OSAndVersions']['PrimaryBrowser']),
-          str(endpoint['OSAndVersions']['Workgroup']),
-          str(endpoint['OSAndVersions']['IsFirewallEnabled']),
-          str(endpoint['ClientVersion']),
-          str(endpoint['BasicInfo']['AttentionRequired']),
-          str(endpoint['BasicInfo']['Infected']),
-          str(endpoint['BasicInfo']['ActiveThreats']),
-          str(endpoint['BasicInfo']['Managed']),
-          str(endpoint['ExtendedInfo']['HasBeenInfected']),
-          str(endpoint['TimesAndStats']['ThreatsRemoved']),
-          str(endpoint['Scheduling']['ScheduledScansEnabled']),
-          str(endpoint['LastSeen']),
-          str(endpoint['TimesAndStats']['LastScan']),
-          str(endpoint['TimesAndStats']['LastDeepScan']),
-        ]),
-  return(table)
+def table_endpoints(status_site_f, csv_writer=None, all_data=None):
+    for endpoint in status_site_f['QueryResults']:
+        if (not args.active) or (args.active and not endpoint['Deactivated']):
+            if (not args.last) or (args.last and (datetime.strptime(endpoint['LastSeen'], '%Y-%m-%dT%H:%M:%S') < datetime.today() - timedelta(7))):
+                row = [
+                    str(endpoint['Deactivated']),
+                    str(endpoint['BasicInfo']['DeviceType']),
+                    str(endpoint['OS']),
+                    str(endpoint['HostName']),
+                    str(endpoint['OSAndVersions']['CurrentUser']),
+                    str(endpoint['IPAddress']),
+                    str(endpoint['OSAndVersions']['IPV4']),
+                    str(endpoint['OSAndVersions']['MACAddress']),
+                    str(endpoint['OSAndVersions']['PrimaryBrowser']),
+                    str(endpoint['OSAndVersions']['Workgroup']),
+                    str(endpoint['OSAndVersions']['IsFirewallEnabled']),
+                    str(endpoint['ClientVersion']),
+                    str(endpoint['BasicInfo']['AttentionRequired']),
+                    str(endpoint['BasicInfo']['Infected']),
+                    str(endpoint['BasicInfo']['ActiveThreats']),
+                    str(endpoint['BasicInfo']['Managed']),
+                    str(endpoint['ExtendedInfo']['HasBeenInfected']),
+                    str(endpoint['TimesAndStats']['ThreatsRemoved']),
+                    str(endpoint['Scheduling']['ScheduledScansEnabled']),
+                    str(endpoint['LastSeen']),
+                    str(endpoint['TimesAndStats']['LastScan']),
+                    str(endpoint['TimesAndStats']['LastDeepScan']),
+                ]
+
+                if all_data is not None:
+                  all_data.append(row)
+
+    return table
 #############################################################################
 #############################################################################
 parser = argparse.ArgumentParser(description='https://github.com/osgpcq/webroot-cli-py',
@@ -84,6 +89,7 @@ parser.add_argument('--ping',                 action='store_true', help='Ping')
 parser.add_argument('--version',              action='store_true', help='Version')
 parser.add_argument('--subscriptions',        action='store_true', help='List subscriptions')
 parser.add_argument('--noheaders',            action='store_true', help='No headers in the output')
+parser.add_argument('--csv',                  action='store_true', help='Output in CSV format')
 parser.add_argument('--debug',                action='store_true', help='Debug information')
 parser.add_argument('--verbose',              action='store_true', default=False, help='Verbose')
 args = parser.parse_args()
@@ -110,25 +116,49 @@ if (args.version):
 if (args.subscriptions):
   subscriptions=request( resource='service/api/notifications/subscriptions', headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token'] } )
 
-if (args.endpoints):
-  if (args.verbose) or (args.debug):
-    print('Date: '+str(date.today()))
-  params = ''
-  table = []
-  endpoints = { 'ContinuationToken': True }
-  while endpoints['ContinuationToken']:
-    endpoints=request( resource='service/api/status/site/'+gsm, headers={ 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer '+authtoken['access_token']}, params=params )
-    params = { 'Continuation': endpoints['ContinuationToken'] }
-    if (args.verbose) or (args.debug):
-      print('Count: '+str(endpoints['Count']))
-    if (args.debug):
-      print('ContinuationToken: '+str(endpoints['ContinuationToken']))
-      print('ContinuationURI: '+str(endpoints['ContinuationURI']))
-    table_endpoints(endpoints)
-  if (args.noheaders):
-    print(tabulate(sorted(table), tablefmt='plain', showindex=True))
-  else:
-    print(tabulate(sorted(table), tablefmt='rounded_outline', headers=['Deactivated','DeviceType','OS','HostName','CurrentUser','IPAddress','IPV4','MACAddress','PrimaryBrowser','Workgroup','IsFirewallEnabled','ClientVersion','AttentionRequired','Infected','ActiveThreats','Managed','HasBeenInfected','ThreatsRemoved','ScheduledScansEnabled','LastSeen','LastScan','LastDeepScan'], showindex=True ))
+if args.endpoints:
+    if args.verbose or args.debug:
+        print('Date: ' + str(date.today()))
+
+    params = ''
+    all_data = []  # List to store all endpoint data
+    headers = ['Deactivated', 'DeviceType', 'OS', 'HostName', 'CurrentUser',
+               'IPAddress', 'IPV4', 'MACAddress', 'PrimaryBrowser', 'Workgroup',
+               'IsFirewallEnabled', 'ClientVersion', 'AttentionRequired', 'Infected',
+               'ActiveThreats', 'Managed', 'HasBeenInfected', 'ThreatsRemoved',
+               'ScheduledScansEnabled', 'LastSeen', 'LastScan', 'LastDeepScan']  # Headers defined once
+
+    endpoints = {'ContinuationToken': True}
+
+    while endpoints['ContinuationToken']:
+        endpoints = request(resource='service/api/status/site/' + gsm,
+                            headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                     'Authorization': 'Bearer ' + authtoken['access_token']},
+                            params=params)
+        params = {'Continuation': endpoints['ContinuationToken']}
+
+        if args.verbose or args.debug:
+            print('Count: ' + str(endpoints['Count']))
+            if args.debug:
+                print('ContinuationToken: ' + str(endpoints['ContinuationToken']))
+                print('ContinuationURI: ' + str(endpoints['ContinuationURI']))
+
+        # Process and store endpoint data
+        table_endpoints(endpoints, None, all_data)
+
+    if args.csv:
+        with open('output.csv', 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            if not args.noheaders:
+                csv_writer.writerow(headers)
+            for row in all_data:
+                csv_writer.writerow(row)
+    else:
+        if args.noheaders:
+            print(tabulate(sorted(all_data), tablefmt='plain', showindex=True))
+        else:
+            print(tabulate(sorted(all_data), tablefmt='rounded_outline',
+                           headers=headers, showindex=True))
 #############################################################################
 #############################################################################
 #############################################################################

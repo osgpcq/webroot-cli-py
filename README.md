@@ -17,6 +17,7 @@ options:
   --version        Version (default: False)
   --subscriptions  List subscriptions (default: False)
   --noheaders      No headers in the output (default: False)
+  --csv            Output in CSV format (default: False)
   --debug          Debug information (default: False)
   --verbose        Verbose (default: False)
 
@@ -30,6 +31,9 @@ options:
 ./webroot-cli.py --endpoints
 ./webroot-cli.py --endpoints --active
 ./webroot-cli.py --endpoints --active --last
+./webroot-cli.py --endpoints --csv
+
+Example output in table format:
 ╭─────────────┬────────────┬──────────────────────────────────┬──────────┬─────────────┬─────────────────┬─────────────────┬───────────────────┬──────────────────┬─────────────┬─────────────────────┬─────────────────┬─────────────────────┬────────────┬─────────────────┬───────────┬───────────────────┬──────────────────┬─────────────────────────┬─────────────────────┬──────────────────────┬──────────────────────╮
 │ Deactivated │ DeviceType │ OS                               │ HostName │ CurrentUser │ IPAddress       │ IPV4            │ MACAddress        │ PrimaryBrowser   │ Workgroup   │ IsFirewallEnabled   │ ClientVersion   │ AttentionRequired   │ Infected   │   ActiveThreats │ Managed   │ HasBeenInfected   │   ThreatsRemoved │ ScheduledScansEnabled   │ LastSeen            │ LastScan             │ LastDeepScan         │
 ├─────────────┼────────────┼──────────────────────────────────┼──────────┼─────────────┼─────────────────┼─────────────────┼───────────────────┼──────────────────┼─────────────┼─────────────────────┼─────────────────┼─────────────────────┼────────────┼─────────────────┼───────────┼───────────────────┼──────────────────┼─────────────────────────┼─────────────────────┼──────────────────────┼──────────────────────┤
@@ -43,4 +47,5 @@ options:
 
 
 # History
+- Added the ability to output endpoint data in CSV format using the `--csv` flag. This is particularly useful for data analysis and external processing.
 Still in quick & dirty dev phase!
