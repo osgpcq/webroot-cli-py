@@ -76,7 +76,7 @@ def table_endpoints(status_site_f, csv_writer=None, all_data=None):
                 if all_data is not None:
                   all_data.append(row)
 
-    return table
+    return all_data
 #############################################################################
 #############################################################################
 parser = argparse.ArgumentParser(description='https://github.com/osgpcq/webroot-cli-py',
